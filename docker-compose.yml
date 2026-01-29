@@ -50,6 +50,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       REFRESH_SECRET: ${REFRESH_SECRET}
       NODE_ENV: ${NODE_ENV}
+      FRONTEND_URL: ${FRONTEND_URL}
       MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/${POSTGRES_DB}?authSource=admin
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
