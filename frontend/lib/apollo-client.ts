@@ -4,6 +4,9 @@ import Cookies from 'js-cookie';
 const httpLink = createHttpLink({
     uri: process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4000/graphql',
     credentials: 'include',
+    fetchOptions: {
+        mode: 'cors',
+    },
 });
 
 const authLink = new ApolloLink((operation, forward) => {
