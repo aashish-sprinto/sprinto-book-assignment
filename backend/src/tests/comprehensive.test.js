@@ -21,6 +21,7 @@ const mockBook = {
 };
 
 const mockReview = {
+    create: jest.fn(),
     find: jest.fn(),
     findByIdAndDelete: jest.fn(),
     deleteMany: jest.fn().mockResolvedValue({ deletedCount: 0 }),
@@ -596,27 +597,32 @@ describe('Comprehensive GraphQL API Tests', () => {
     // ============ REVIEW TESTS ============
     describe('Reviews Management', () => {
         describe('Create Review', () => {
-            it('should allow authenticated user to create review', async () => {
+            it('should allow authenticated user to create review and update metadata', async () => {
                 const input = { bookId: 1, rating: 5, comment: 'Great book!', reviewerName: 'John' };
                 const authenticatedUser = { userId: 1 };
                 const mockReviewData = { id: 1, ...input };
 
-                mockReview.find = jest.fn()
-                    .mockReturnValueOnce(jest.fn().mockResolvedValue([
-                        { rating: 5 },
-                        { rating: 4 },
-                        { rating: 5 },
-                    ]));
-
-                mockReview.find = jest.fn().mockReturnValue(Promise.resolve([
+                mockReview.create.mockResolvedValue(mockReviewData);
+                mockReview.find.mockResolvedValue([
                     { rating: 5 },
                     { rating: 4 },
                     { rating: 5 },
-                ]));
+                ]);
 
-                // This is a simplified test - in reality you'd need proper mock
-                expect(input.rating).toBeGreaterThanOrEqual(1);
-                expect(input.rating).toBeLessThanOrEqual(5);
+                mockBookMetadata.findOneAndUpdate.mockResolvedValue({});
+
+                const result = await resolvers.Mutation.createReview(null, { input }, { user: authenticatedUser });
+
+                expect(mockReview.create).toHaveBeenCalledWith(input);
+                expect(mockBookMetadata.findOneAndUpdate).toHaveBeenCalledWith(
+                    { bookId: 1 },
+                    expect.objectContaining({
+                        averageRating: expect.any(Number),
+                        totalReviews: 3,
+                    }),
+                    { upsert: true }
+                );
+                expect(result).toEqual(mockReviewData);
             });
 
             it('should reject unauthenticated review creation', async () => {
@@ -626,11 +632,20 @@ describe('Comprehensive GraphQL API Tests', () => {
                     .rejects.toThrow('Unauthorized: Authentication required');
             });
 
-            it('should validate rating between 1-5', async () => {
-                const input = { bookId: 1, rating: 10, comment: 'Great!' };
+            it('should validate rating within expected bounds when creating review', async () => {
+                const input = { bookId: 1, rating: 4, comment: 'Nice read' };
                 const authenticatedUser = { userId: 1 };
+                const mockReviewData = { id: 2, ...input };
 
-                expect(input.rating).toBeGreaterThanOrEqual(1);
+                mockReview.create.mockResolvedValue(mockReviewData);
+                mockReview.find.mockResolvedValue([{ rating: 4 }]);
+                mockBookMetadata.findOneAndUpdate.mockResolvedValue({});
+
+                const result = await resolvers.Mutation.createReview(null, { input }, { user: authenticatedUser });
+
+                expect(result.rating).toBeGreaterThanOrEqual(1);
+                expect(result.rating).toBeLessThanOrEqual(5);
+                expect(mockBookMetadata.findOneAndUpdate).toHaveBeenCalled();
             });
         });
 
@@ -745,6 +760,38 @@ describe('Comprehensive GraphQL API Tests', () => {
 
                 expect(result.id).toBe(1);
                 expect(mockAuthor.findByPk).toHaveBeenCalledWith(1);
+            });
+        });
+
+        describe('Book Metadata & Reviews Resolvers', () => {
+            it('should return metadata for a book', async () => {
+                const book = { id: 1 };
+                const mockMetadata = { bookId: 1, averageRating: 4.33, totalReviews: 3 };
+
+                mockBookMetadata.findOne.mockResolvedValueOnce(mockMetadata);
+
+                const result = await resolvers.Book.metadata(book);
+
+                expect(result).toEqual(mockMetadata);
+                expect(mockBookMetadata.findOne).toHaveBeenCalledWith({ bookId: 1 });
+            });
+
+            it('should return reviews for a book', async () => {
+                const book = { id: 1 };
+                const mockReviews = [
+                    { id: 1, rating: 5, comment: 'Great' },
+                    { id: 2, rating: 4, comment: 'Good' },
+                ];
+
+                // mock Review.find to return a chainable object with sort()
+                mockReview.find.mockReturnValueOnce({
+                    sort: jest.fn().mockResolvedValueOnce(mockReviews),
+                });
+
+                const result = await resolvers.Book.reviews(book);
+
+                expect(result).toEqual(mockReviews);
+                expect(mockReview.find).toHaveBeenCalledWith({ bookId: 1 });
             });
         });
 
