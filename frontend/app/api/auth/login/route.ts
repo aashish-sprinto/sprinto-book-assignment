@@ -39,7 +39,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(data.data.login);
+    const { user, accessToken, refreshToken } = data.data.login;
+
+    const res = NextResponse.json({ user, accessToken }, { status: 200 });
+
+    // Minimal cookie attributes to work on same-host deployments.
+    // Use HttpOnly for refresh token. SameSite=lax is safe for same-site flows.
+    const maxAge = 7 * 24 * 60 * 60; // 7 days
+    res.cookies.set('refreshToken', refreshToken, {
+      httpOnly: true,
+      path: '/',
+      maxAge,
+      sameSite: 'lax',
+    });
+
+    // Optionally set accessToken as a readable cookie for client JS (not HttpOnly)
+    res.cookies.set('accessToken', accessToken, {
+      httpOnly: false,
+      path: '/',
+      maxAge,
+      sameSite: 'lax',
+    });
+
+    return res;
   } catch (error) {
     console.error('Auth error:', error);
     return NextResponse.json(
