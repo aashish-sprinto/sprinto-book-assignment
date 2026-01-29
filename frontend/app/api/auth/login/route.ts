@@ -33,34 +33,46 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
 
     if (data.errors) {
+      console.error('Backend error:', data.errors);
       return NextResponse.json(
         { message: data.errors[0].message },
         { status: 400 }
       );
     }
 
+    if (!data.data || !data.data.login) {
+      console.error('Invalid response from backend:', data);
+      return NextResponse.json(
+        { message: 'Invalid login response' },
+        { status: 400 }
+      );
+    }
+
     const { user, accessToken, refreshToken } = data.data.login;
+    console.log('Login successful, setting cookies for user:', user.email);
 
     const res = NextResponse.json({ user, accessToken }, { status: 200 });
 
-    // Minimal cookie attributes to work on same-host deployments.
-    // Use HttpOnly for refresh token. SameSite=lax is safe for same-site flows.
+    // Set cookies for HTTP same-host
     const maxAge = 7 * 24 * 60 * 60; // 7 days
+
     res.cookies.set('refreshToken', refreshToken, {
       httpOnly: true,
       path: '/',
       maxAge,
       sameSite: 'lax',
+      secure: false,
     });
 
-    // Optionally set accessToken as a readable cookie for client JS (not HttpOnly)
     res.cookies.set('accessToken', accessToken, {
       httpOnly: false,
       path: '/',
       maxAge,
       sameSite: 'lax',
+      secure: false,
     });
 
+    console.log('Cookies set:', ['refreshToken', 'accessToken']);
     return res;
   } catch (error) {
     console.error('Auth error:', error);

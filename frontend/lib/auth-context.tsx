@@ -79,9 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authorId: tokenPayload.authorId,
       };
 
-      Cookies.set('accessToken', accessToken, { secure: true, sameSite: 'strict' });
-      Cookies.set('refreshToken', refreshToken, { secure: true, sameSite: 'strict' });
-      Cookies.set('user', JSON.stringify(userWithAuthorId), { secure: true, sameSite: 'strict' });
+      // For HTTP, use secure: false and sameSite: 'lax'
+      const cookieOptions = { secure: false, sameSite: 'lax' as const };
+
+      Cookies.set('accessToken', accessToken, cookieOptions);
+      Cookies.set('refreshToken', refreshToken, cookieOptions);
+      Cookies.set('user', JSON.stringify(userWithAuthorId), cookieOptions);
 
       setUser(userWithAuthorId);
     } finally {
@@ -112,9 +115,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authorId: tokenPayload.authorId,
       };
 
-      Cookies.set('accessToken', accessToken, { secure: true, sameSite: 'strict' });
-      Cookies.set('refreshToken', refreshToken, { secure: true, sameSite: 'strict' });
-      Cookies.set('user', JSON.stringify(userWithAuthorId), { secure: true, sameSite: 'strict' });
+      // For HTTP, use secure: false and sameSite: 'lax'
+      const cookieOptions = { secure: false, sameSite: 'lax' as const };
+
+      Cookies.set('accessToken', accessToken, cookieOptions);
+      Cookies.set('refreshToken', refreshToken, cookieOptions);
+      Cookies.set('user', JSON.stringify(userWithAuthorId), cookieOptions);
 
       setUser(userWithAuthorId);
     } finally {
